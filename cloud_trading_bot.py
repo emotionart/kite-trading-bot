@@ -554,3 +554,4 @@ if __name__ == "__main__":
 
     # Start trading loop
     trading_loop()
+ 
