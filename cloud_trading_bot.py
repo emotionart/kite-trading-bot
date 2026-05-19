@@ -31,7 +31,7 @@ CHAT_ID        = os.environ.get("CHAT_ID", "8757681357")
 PORT           = int(os.environ.get("PORT", 8080))
 
 # Trading config
-MAX_DAILY_LOSS     = 10000
+MAX_DAILY_LOSS     = 100000
 MAX_TRADES_PER_DAY = 5
 TRADE_START_TIME   = "09:30"
 TRADE_END_TIME     = "15:00"
