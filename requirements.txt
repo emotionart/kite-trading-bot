@@ -1,1 +1,4 @@
-kiteconnect pandas numpy requests python-telegram-bot 
+kiteconnect 
+pandas 
+numpy 
+requests
