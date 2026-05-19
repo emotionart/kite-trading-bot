@@ -1,1 +1,1 @@
-worker: python trading_system.py 
+web: python cloud_trading_bot.py 
