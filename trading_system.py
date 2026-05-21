@@ -222,13 +222,60 @@ def tg_get_updates(offset=None):
 # ================================================================
 #  CALLBACK SERVER — Manual login fallback
 # ================================================================
+import json as _json
+
+# Global executor reference for API
+_executor_ref = [None]
+
 class CallbackHandler(BaseHTTPRequestHandler):
+
+    def send_cors(self, code=200, content_type="application/json"):
+        self.send_response(code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_OPTIONS(self):
+        self.send_cors()
+
     def do_GET(self):
         global access_token
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
+        path   = parsed.path
 
-        if '/callback' in self.path or '/auth' in self.path:
+        # ── /api/status ──────────────────────────────
+        if path == '/api/status':
+            ex  = _executor_ref[0]
+            pnl = ex.daily_pnl if ex else 0
+            tc  = ex.trade_count if ex else 0
+            self.send_cors()
+            self.wfile.write(_json.dumps({
+                "status":      "online",
+                "token":       bool(access_token[0]),
+                "last_login":  last_login[0].strftime('%H:%M %d-%b') if last_login[0] else None,
+                "pnl":         pnl,
+                "trades":      tc,
+                "max_trades":  MAX_TRADES_PER_DAY,
+                "max_loss":    MAX_DAILY_LOSS,
+                "capital":     CAPITAL,
+                "login_url":   kite.login_url(),
+                "time":        datetime.now().strftime('%H:%M:%S'),
+            }).encode())
+            return
+
+        # ── /api/login_url ────────────────────────────
+        if path == '/api/login_url':
+            self.send_cors()
+            self.wfile.write(_json.dumps({
+                "url": kite.login_url()
+            }).encode())
+            return
+
+        # ── /callback — Zerodha redirect ─────────────
+        if path == '/callback' or path == '/auth':
             req_token = params.get('request_token', [None])[0]
             if req_token:
                 try:
@@ -238,36 +285,69 @@ class CallbackHandler(BaseHTTPRequestHandler):
                     kite.set_access_token(new_token)
                     last_login[0]   = datetime.now()
 
-                    log.info(f"[AUTH] Manual login success! Token: {new_token[:10]}...")
-                    send_telegram(f"✅ <b>Manual Login Successful!</b>\nToken set!\n/analyze RELIANCE try karo!")
+                    log.info(f"[AUTH] Login success! Token: {new_token[:10]}...")
+                    send_telegram("✅ <b>Login Successful!</b>\nToken set! Bot active hai!")
 
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(f"""<html><body style='background:#000;color:#0f0;font-family:monospace;padding:40px;text-align:center'>
-<h1>✅ Login Successful!</h1>
-<h2>Token Set! Bot chal raha hai!</h2>
-<p>Telegram pe /analyze RELIANCE bhejo!</p>
+                    self.send_cors(200, "text/html")
+                    self.wfile.write("""<!DOCTYPE html>
+<html><head><meta charset='UTF-8'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0f0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#12121e;border:1px solid #1e1e32;border-radius:20px;padding:48px;text-align:center;max-width:420px;width:90%}
+.icon{font-size:64px;margin-bottom:20px}
+h1{color:#00ff88;font-size:28px;margin-bottom:12px}
+p{color:#8888aa;margin-bottom:24px;line-height:1.6}
+.btn{display:inline-block;background:#00ff88;color:#000;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px}
+.token{background:#141420;border:1px solid #1e1e32;border-radius:10px;padding:12px;font-family:monospace;font-size:12px;color:#4488ff;margin:16px 0;word-break:break-all}
+</style></head>
+<body><div class='card'>
+<div class='icon'>✅</div>
+<h1>Login Successful!</h1>
+<p>Token set ho gaya! Bot ab trade kar sakta hai.</p>
+<div class='token'>Token Active ✓</div>
+<a class='btn' href='javascript:window.close()'>Dashboard pe Wapas Jao</a>
+</div>
+<script>
+// Notify parent window if opened as popup
+if(window.opener){
+  window.opener.postMessage({type:'LOGIN_SUCCESS'},'*');
+  setTimeout(()=>window.close(),2000);
+}
+</script>
 </body></html>""".encode())
 
                 except Exception as e:
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(f"<h1 style='color:red'>Error: {e}</h1>".encode())
+                    self.send_cors(200, "text/html")
+                    self.wfile.write(f"<h1 style='color:red;font-family:monospace;padding:40px'>Error: {e}</h1>".encode())
             else:
+                # Show login button
                 login_url = kite.login_url()
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(f"""<html><body style='background:#000;color:#0f0;font-family:monospace;padding:40px;text-align:center'>
-<h1>🔐 Kite Auth</h1>
-<a href='{login_url}' style='background:#0f0;color:#000;padding:15px 30px;font-size:18px;text-decoration:none;border-radius:5px'>
-👉 Zerodha Login Karo
-</a>
-<p style='margin-top:20px;color:#ff0'>Auto login bhi chal raha hai! Sirf agar token expire ho tab yahan aao.</p>
-</body></html>""".encode())
-        else:
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"Bot running! v4")
+                self.send_cors(200, "text/html")
+                self.wfile.write(f"""<!DOCTYPE html>
+<html><head><meta charset='UTF-8'>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0a0a0f;color:#e0e0f0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}}
+.card{{background:#12121e;border:1px solid #1e1e32;border-radius:20px;padding:48px;text-align:center;max-width:420px;width:90%}}
+.icon{{font-size:64px;margin-bottom:20px}}
+h1{{color:#00ff88;font-size:28px;margin-bottom:12px}}
+p{{color:#8888aa;margin-bottom:24px;line-height:1.6}}
+.btn{{display:inline-block;background:#00ff88;color:#000;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px;transition:all 0.2s}}
+.note{{font-size:12px;color:#4444aa;margin-top:16px}}
+</style></head>
+<body><div class='card'>
+<div class='icon'>🔐</div>
+<h1>Kite Authentication</h1>
+<p>Zerodha se login karo — token automatically set ho jayega!</p>
+<a class='btn' href='{login_url}'>👉 Zerodha Login Karo</a>
+<div class='note'>Auto login bhi chal raha hai (8:45 AM daily)</div>
+</div></body></html>""".encode())
+            return
+
+        # ── Default ───────────────────────────────────
+        self.send_cors(200, "text/plain")
+        self.wfile.write(b"StockWala Bot v4 Running!")
 
     def log_message(self, *args): pass
 
@@ -922,6 +1002,9 @@ class TradingSystem:
         log.info("  KITE AUTO TRADING SYSTEM v4")
         log.info("  Multi-Strategy | Auto Login | Trailing SL")
         log.info("=" * 60)
+
+        # Register executor for API
+        _executor_ref[0] = self.executor
 
         # Start callback server
         threading.Thread(target=start_callback_server, daemon=True).start()
