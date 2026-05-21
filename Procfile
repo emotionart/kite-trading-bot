@@ -1,1 +1,1 @@
-web: python main.py
+worker: python trading_system.py
