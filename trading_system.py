@@ -485,6 +485,21 @@ p{{color:#8888aa;margin-bottom:24px;line-height:1.6}}
 </div></body></html>""".encode())
             return
 
+        # ── /dashboard ───────────────────────────────
+        if path in ['/dashboard.html', '/dashboard', '/']:
+            try:
+                with open('dashboard.html', 'rb') as f:
+                    html = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(html)
+            except:
+                self.send_cors(200, "text/plain")
+                self.wfile.write(b"Dashboard not found!")
+            return
+
         # ── Default ───────────────────────────────────
         self.send_cors(200, "text/plain")
         self.wfile.write(b"StockWala Bot v4 Running!")
