@@ -24,11 +24,12 @@ from kiteconnect import KiteConnect
 #  CONFIG
 # ================================================================
 
-API_KEY        = "zhve1lfpjxtie9rv"
-API_SECRET     = "wr1cwi6ijdpa2phztvhbtm48z79a9jsu"
-ACCESS_TOKEN   = "nwbM8lH7WR56RP5u3nqQMFWZKmVrxE9J"  # Har roz update karo
-TELEGRAM_TOKEN = "8701616355:AAGvetI7MfI2f6vJh7LkeujpxHmmtB0OtXE"
-CHAT_ID        = "8757681357"
+import os
+API_KEY        = os.environ.get("API_KEY",        "zhve1lfpjxtie9rv")
+API_SECRET     = os.environ.get("API_SECRET",     "wr1cwi6ijdpa2phztvhbtm48z79a9jsu")
+ACCESS_TOKEN   = os.environ.get("ACCESS_TOKEN",   "")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8701616355:AAGvetI7MfI2f6vJh7LkeujpxHmmtB0OtXE")
+CHAT_ID        = os.environ.get("CHAT_ID",        "8757681357")
 
 # Risk Settings
 MAX_DAILY_LOSS     = 10000
