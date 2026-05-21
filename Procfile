@@ -1,1 +1,1 @@
-web: python cloud_trading_bot.py 
+web: python main.py

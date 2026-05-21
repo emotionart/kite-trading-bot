@@ -1,4 +1,4 @@
-kiteconnect 
-pandas 
-numpy 
+kiteconnect
+pandas
+numpy
 requests
