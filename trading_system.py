@@ -189,13 +189,61 @@ def calculate_vwap(df):
 # ================================================================
 #  /analyze COMMAND
 # ================================================================
+def get_current_expiry_symbol(base):
+    """Auto detect current/next month futures symbol"""
+    now   = datetime.now()
+    # Months short codes
+    months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+    yr     = str(now.year)[2:]  # 26
+    m      = now.month - 1      # 0-indexed
+
+    # Try current month first, then next
+    for delta in [0, 1]:
+        mi  = (m + delta) % 12
+        yri = yr if (m + delta) < 12 else str(int(yr)+1)
+        sym = f"{base}{yri}{months[mi]}FUT"
+        try:
+            kite.ltp(f"NFO:{sym}")
+            return sym
+        except:
+            pass
+    return f"{base}{yr}{months[m]}FUT"
+
+# Short aliases
+ALIASES = {
+    "NIFTY":     ("NFO", "NIFTY"),
+    "BANKNIFTY": ("NFO", "BANKNIFTY"),
+    "FINNIFTY":  ("NFO", "FINNIFTY"),
+    "MIDCAP":    ("NFO", "MIDCPNIFTY"),
+    "GOLD":      ("MCX", "GOLD"),
+    "SILVER":    ("MCX", "SILVERM"),
+    "CRUDE":     ("MCX", "CRUDEOIL"),
+    "NATURALGAS":("MCX", "NATURALGAS"),
+}
+
 def cmd_analyze(symbol_input):
-    parts    = symbol_input.strip().upper().split()
-    symbol   = parts[0]
-    exchange = parts[1] if len(parts) >= 2 else (
-        "NFO" if any(x in symbol for x in ["NIFTY","BANKNIFTY","FINNIFTY"]) and any(x in symbol for x in ["FUT","CE","PE"]) else
-        "MCX" if any(x in symbol for x in ["GOLD","SILVER","CRUDE","NATURALGAS"]) else "NSE"
-    )
+    parts  = symbol_input.strip().upper().split()
+    symbol = parts[0]
+    exchange = parts[1] if len(parts) >= 2 else None
+
+    # Auto-detect alias
+    if symbol in ALIASES and "FUT" not in symbol:
+        exch, base = ALIASES[symbol]
+        exchange   = exch
+        if exch == "NFO":
+            symbol = get_current_expiry_symbol(base)
+        elif exch == "MCX":
+            now    = datetime.now()
+            months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+            yr     = str(now.year)[2:]
+            symbol = f"{base}{yr}{months[now.month-1]}FUT"
+        send_telegram(f"ℹ️ Auto-detected: <b>{symbol} [{exchange}]</b>")
+    elif not exchange:
+        exchange = (
+            "NFO" if any(x in symbol for x in ["NIFTY","BANKNIFTY","FINNIFTY"]) and any(x in symbol for x in ["FUT","CE","PE"]) else
+            "MCX" if any(x in symbol for x in ["GOLD","SILVER","CRUDE","NATURALGAS","SILVERM"]) and "FUT" in symbol else
+            "NSE"
+        )
 
     send_telegram(f"🔍 <b>Analyzing {symbol} [{exchange}]...</b>")
 
@@ -304,14 +352,14 @@ R:R = 1:1.5
 
     except Exception as e:
         log.error(f"[ANALYZE] {e}")
-        send_telegram(f"❌ Error: {str(e)}\n\nToken expire hua? Login karo:\nhttps://web-production-f4bb5.up.railway.app/callback")
+        send_telegram(f"❌ Error: {str(e)}\n\nToken expire hua? Login karo:\nhttps://worker-production-5b28.up.railway.app/callback")
 
 # ================================================================
 #  TELEGRAM LISTENER
 # ================================================================
 def telegram_listener():
     log.info("[TG] Listener started!")
-    railway_url = "https://web-production-f4bb5.up.railway.app/callback"
+    railway_url = "https://worker-production-5b28.up.railway.app/callback"
     send_telegram(
         f"🤖 <b>Trading System Online! v3</b>\n\n"
         f"Token expire hone pe yahan click karo:\n{railway_url}\n\n"
@@ -335,7 +383,7 @@ def telegram_listener():
                         threading.Thread(target=cmd_analyze, args=(parts[1],), daemon=True).start()
 
                 elif text.lower() == "/login":
-                    send_telegram(f"🔐 Token refresh karne ke liye:\nhttps://web-production-f4bb5.up.railway.app/callback")
+                    send_telegram(f"🔐 Token refresh karne ke liye:\nhttps://worker-production-5b28.up.railway.app/callback")
 
                 elif text.lower() == "/help":
                     send_telegram(
@@ -486,7 +534,7 @@ class TradingSystem:
         while True:
             try:
                 if not ACCESS_TOKEN:
-                    log.info("[WAIT] No token — login karo: https://web-production-f4bb5.up.railway.app/callback")
+                    log.info("[WAIT] No token — login karo: https://worker-production-5b28.up.railway.app/callback")
                     time.sleep(30)
                     continue
 
