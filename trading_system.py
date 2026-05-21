@@ -266,6 +266,146 @@ class CallbackHandler(BaseHTTPRequestHandler):
             }).encode())
             return
 
+        # ── /api/analyze ─────────────────────────────
+        if path == '/api/analyze':
+            sym  = params.get('symbol', [''])[0].upper()
+            exch = params.get('exchange', ['NSE'])[0].upper()
+
+            if not sym:
+                self.send_cors()
+                self.wfile.write(_json.dumps({"error": "Symbol required"}).encode())
+                return
+
+            if not access_token[0]:
+                self.send_cors()
+                self.wfile.write(_json.dumps({"error": "Not logged in"}).encode())
+                return
+
+            try:
+                # Auto expiry for futures
+                aliases = {
+                    "NIFTY":     ("NFO", "NIFTY"),
+                    "BANKNIFTY": ("NFO", "BANKNIFTY"),
+                    "FINNIFTY":  ("NFO", "FINNIFTY"),
+                    "GOLD":      ("MCX", "GOLD"),
+                    "SILVER":    ("MCX", "SILVERM"),
+                    "CRUDE":     ("MCX", "CRUDEOIL"),
+                    "NATURALGAS":("MCX", "NATURALGAS"),
+                }
+                if sym in aliases and "FUT" not in sym:
+                    exch, base = aliases[sym]
+                    months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+                    yr     = str(datetime.now().year)[2:]
+                    sym    = f"{base}{yr}{months[datetime.now().month-1]}FUT"
+
+                df5, ltp = get_candles(sym, exch, "5minute", 10)
+                if df5 is None:
+                    self.send_cors()
+                    self.wfile.write(_json.dumps({"error": f"{sym} data not found"}).encode())
+                    return
+
+                closes  = df5['close'].values
+                highs   = df5['high'].values
+                lows    = df5['low'].values
+                volumes = df5['volume'].values
+
+                ema9v    = ema(closes, 9)
+                ema21v   = ema(closes, 21)
+                rsi14    = rsi(closes, 14)
+                ml, sl   = macd(closes)
+                vwap_v   = vwap(df5).values
+                st, std  = supertrend(df5, 10, 3)
+                patterns = candlestick_patterns(df5)
+
+                cp   = closes[-1]
+                cv   = vwap_v[-1]
+                cr   = rsi14[-1]
+                cm   = ml[-1]
+                e9   = ema9v[-1]; e21 = ema21v[-1]
+                av   = cp > cv
+                std_val = int(std[-1]) if not np.isnan(std[-1]) else 0
+
+                avg_vol   = np.mean(volumes[-20:])
+                vol_spike = bool(volumes[-1] > avg_vol * 1.5)
+                vol_ratio = round(float(volumes[-1] / avg_vol), 1)
+
+                eb  = bool((ema9v[-2] <= ema21v[-2]) and (ema9v[-1] > ema21v[-1]))
+                ebs = bool((ema9v[-2] >= ema21v[-2]) and (ema9v[-1] < ema21v[-1]))
+                mb  = bool((ml[-2] <= sl[-2]) and (ml[-1] > sl[-1]))
+                mbs = bool((ml[-2] >= sl[-2]) and (ml[-1] < sl[-1]))
+
+                buy_sc  = sum([std_val==1, eb or e9>e21, av, 40<=cr<=65, mb or cm>sl[-1], vol_spike]) * 16
+                sell_sc = sum([std_val==-1, ebs or e9<e21, not av, 35<=cr<=60, mbs or cm<sl[-1], vol_spike]) * 16
+
+                if buy_sc >= 60:    sig = "BUY";  conf = buy_sc
+                elif sell_sc >= 60: sig = "SELL"; conf = sell_sc
+                else:               sig = "WAIT"; conf = max(buy_sc, sell_sc)
+
+                sl_p = round(float(min(lows[-5:])) * 0.998, 2) if sig != "SELL" else round(float(max(highs[-5:])) * 1.002, 2)
+                risk = max(abs(float(cp) - sl_p), 1)
+                t1   = round(float(cp) + risk*1.5, 2) if sig != "SELL" else round(float(cp) - risk*1.5, 2)
+                t2   = round(float(cp) + risk*2.5, 2) if sig != "SELL" else round(float(cp) - risk*2.5, 2)
+
+                today    = datetime.now().date()
+                today_df = df5[pd.to_datetime(df5['date']).dt.date == today]
+                d_open   = float(today_df.iloc[0]['open']) if len(today_df) > 0 else float(cp)
+                d_high   = float(today_df['high'].max())   if len(today_df) > 0 else float(cp)
+                d_low    = float(today_df['low'].min())    if len(today_df) > 0 else float(cp)
+                chg      = round(((float(cp) - d_open) / d_open) * 100, 2) if d_open else 0
+
+                self.send_cors()
+                self.wfile.write(_json.dumps({
+                    "symbol":     sym,
+                    "exchange":   exch,
+                    "ltp":        round(float(cp), 2),
+                    "change":     chg,
+                    "open":       d_open,
+                    "high":       d_high,
+                    "low":        d_low,
+                    "supertrend": "Bullish" if std_val==1 else "Bearish" if std_val==-1 else "Neutral",
+                    "ema9":       round(float(e9), 2),
+                    "ema21":      round(float(e21), 2),
+                    "ema_status": "Bullish Cross" if eb else "Bearish Cross" if ebs else "Above" if e9>e21 else "Below",
+                    "vwap":       round(float(cv), 2),
+                    "vwap_status": "Above" if av else "Below",
+                    "rsi":        round(float(cr), 1),
+                    "macd":       round(float(cm), 3),
+                    "macd_status": "Bullish" if mb or cm>sl[-1] else "Bearish",
+                    "volume":     f"Spike {vol_ratio}x" if vol_spike else f"Normal {vol_ratio}x",
+                    "patterns":   [p[0] for p in patterns],
+                    "signal":     sig,
+                    "confidence": min(int(conf), 100),
+                    "sl":         sl_p,
+                    "t1":         t1,
+                    "t2":         t2,
+                }).encode())
+
+            except Exception as e:
+                self.send_cors()
+                self.wfile.write(_json.dumps({"error": str(e)}).encode())
+            return
+
+        # ── /api/indices ──────────────────────────────
+        if path == '/api/indices':
+            try:
+                indices = ["NSE:NIFTY 50", "NSE:NIFTY BANK", "NSE:INDIA VIX"]
+                result  = {}
+                for idx in indices:
+                    try:
+                        data = kite.ltp(idx)
+                        key  = list(data.keys())[0]
+                        result[idx] = {
+                            "ltp":    data[key].get("last_price", 0),
+                            "change": data[key].get("net_change", 0),
+                        }
+                    except: pass
+                self.send_cors()
+                self.wfile.write(_json.dumps(result).encode())
+            except Exception as e:
+                self.send_cors()
+                self.wfile.write(_json.dumps({"error": str(e)}).encode())
+            return
+
         # ── /api/login_url ────────────────────────────
         if path == '/api/login_url':
             self.send_cors()
