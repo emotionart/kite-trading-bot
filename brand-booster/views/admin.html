@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Brand Booster AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0a0a0f; color: white; }
+    .sidebar { background: rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.08); }
+    .nav-item { transition: all 0.2s; }
+    .nav-item:hover, .nav-item.active { background: rgba(239,68,68,0.1); color: #f87171; }
+    .nav-item.active { border-right: 3px solid #ef4444; }
+    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
+    .topbar { background: rgba(10,10,15,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .badge-admin { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-user { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+    .badge-active { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-inactive { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+    .modal { background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); }
+    .modal-card { background: #111118; border: 1px solid rgba(255,255,255,0.1); }
+    .input-field { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); }
+    .input-field:focus { background: rgba(255,255,255,0.1); border-color: #ef4444; outline: none; box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+    .tab-active { background: rgba(239,68,68,0.15); color: #f87171; border-bottom: 2px solid #ef4444; }
+    table { border-collapse: separate; border-spacing: 0; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar w-64 flex-col hidden lg:flex h-full">
+    <div class="p-6 border-b border-white/8">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="font-bold text-white text-sm">Admin Panel</p>
+          <p class="text-gray-500 text-xs">Brand Booster AI</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1">
+      <a href="#" onclick="showTab('overview')" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" id="tab-overview">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+        </svg>
+        Overview
+      </a>
+      <a href="#" onclick="showTab('users')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 text-sm font-medium" id="tab-users">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        Users
+      </a>
+      <a href="#" onclick="showTab('tools')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 text-sm font-medium" id="tab-tools">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        </svg>
+        AI Tools
+      </a>
+      <a href="#" onclick="showTab('logs')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 text-sm font-medium" id="tab-logs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Activity Logs
+      </a>
+    </nav>
+
+    <div class="p-4 border-t border-white/8 space-y-2">
+      <a href="/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-500 hover:text-indigo-400 text-sm transition-colors hover:bg-indigo-400/10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        User Dashboard
+      </a>
+      <button onclick="logout()" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-500 hover:text-red-400 text-sm w-full transition-colors hover:bg-red-400/10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <header class="topbar px-6 py-4 flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-lg font-semibold text-white" id="pageTitle">Overview</h1>
+          <span class="badge-admin text-xs px-2.5 py-1 rounded-lg font-medium">Admin</span>
+        </div>
+        <p class="text-gray-500 text-xs mt-0.5" id="adminName">Loading...</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="showAddUserModal()" id="addUserBtn" class="hidden bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 text-sm px-4 py-2 rounded-xl transition-colors">
+          + Add User
+        </button>
+        <div class="w-9 h-9 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center cursor-pointer">
+          <span class="text-red-400 font-semibold text-sm" id="adminInitial">A</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6">
+
+      <!-- Overview Tab -->
+      <div id="overview-section">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="card rounded-2xl p-5">
+            <p class="text-gray-400 text-xs mb-2 uppercase tracking-wide">Total Users</p>
+            <p class="text-3xl font-bold text-white" id="ov-users">--</p>
+          </div>
+          <div class="card rounded-2xl p-5">
+            <p class="text-gray-400 text-xs mb-2 uppercase tracking-wide">Active Users</p>
+            <p class="text-3xl font-bold text-green-400" id="ov-active">--</p>
+          </div>
+          <div class="card rounded-2xl p-5">
+            <p class="text-gray-400 text-xs mb-2 uppercase tracking-wide">Tool Uses</p>
+            <p class="text-3xl font-bold text-indigo-400" id="ov-tools">--</p>
+          </div>
+          <div class="card rounded-2xl p-5">
+            <p class="text-gray-400 text-xs mb-2 uppercase tracking-wide">System</p>
+            <p class="text-3xl font-bold text-green-400">Online</p>
+          </div>
+        </div>
+
+        <div class="card rounded-2xl p-6">
+          <h3 class="text-white font-semibold mb-4">Recent Activity</h3>
+          <div id="ov-logs" class="space-y-3">
+            <div class="skeleton h-10 rounded-xl"></div>
+            <div class="skeleton h-10 rounded-xl"></div>
+            <div class="skeleton h-10 rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="users-section" class="hidden">
+        <div class="card rounded-2xl overflow-hidden">
+          <div class="p-5 border-b border-white/8 flex items-center gap-4">
+            <input type="text" id="userSearch" placeholder="Search users..." oninput="searchUsers()"
+              class="input-field flex-1 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500">
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-white/8">
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">User</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">Role</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">Status</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">Last Login</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTable">
+                <tr><td colspan="5" class="px-5 py-8 text-center text-gray-500">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="p-4 border-t border-white/8 flex items-center justify-between">
+            <span class="text-gray-500 text-sm" id="userPagination">--</span>
+            <div class="flex gap-2">
+              <button onclick="changePage(-1)" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 text-sm transition-colors">Prev</button>
+              <button onclick="changePage(1)" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 text-sm transition-colors">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tools Tab -->
+      <div id="tools-section" class="hidden">
+        <div id="adminToolsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- Logs Tab -->
+      <div id="logs-section" class="hidden">
+        <div class="card rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-white/8">
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">User</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">Action</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">IP</th>
+                  <th class="text-left px-5 py-3 text-gray-400 text-xs font-medium uppercase tracking-wide">Time</th>
+                </tr>
+              </thead>
+              <tbody id="logsTable">
+                <tr><td colspan="4" class="px-5 py-8 text-center text-gray-500">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Add User Modal -->
+  <div id="addUserModal" class="modal fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-card rounded-2xl p-6 w-full max-w-md">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-white font-semibold">Add New User</h3>
+        <button onclick="closeModal()" class="text-gray-500 hover:text-white transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="addUserForm" class="space-y-4" onsubmit="addUser(event)">
+        <div>
+          <label class="block text-gray-400 text-xs mb-1.5">Full Name</label>
+          <input type="text" name="name" required class="input-field w-full rounded-xl px-4 py-2.5 text-white text-sm">
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs mb-1.5">Email</label>
+          <input type="email" name="email" required class="input-field w-full rounded-xl px-4 py-2.5 text-white text-sm">
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs mb-1.5">Password</label>
+          <input type="password" name="password" required minlength="8" class="input-field w-full rounded-xl px-4 py-2.5 text-white text-sm">
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs mb-1.5">Role</label>
+          <select name="role" class="input-field w-full rounded-xl px-4 py-2.5 text-white text-sm">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div id="modalError" class="hidden text-red-400 text-sm"></div>
+        <button type="submit" class="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          Create User
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let currentTab = 'overview';
+
+    function showTab(tab) {
+      ['overview','users','tools','logs'].forEach(t => {
+        document.getElementById(`${t}-section`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('active','text-red-400');
+        document.getElementById(`tab-${t}`).classList.add('text-gray-400');
+      });
+      document.getElementById(`${tab}-section`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.remove('text-gray-400');
+      document.getElementById('pageTitle').textContent = {overview:'Overview',users:'Users',tools:'AI Tools',logs:'Activity Logs'}[tab];
+      document.getElementById('addUserBtn').classList.toggle('hidden', tab !== 'users');
+      currentTab = tab;
+      if (tab === 'users') loadUsers();
+      if (tab === 'tools') loadAdminTools();
+      if (tab === 'logs') loadLogs();
+      return false;
+    }
+
+    async function init() {
+      try {
+        const [meRes, statsRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/admin/stats'),
+        ]);
+        const { user } = await meRes.json();
+        if (user.role !== 'admin') window.location.href = '/dashboard';
+
+        document.getElementById('adminName').textContent = user.name;
+        document.getElementById('adminInitial').textContent = user.name[0].toUpperCase();
+
+        const stats = await statsRes.json();
+        document.getElementById('ov-users').textContent = stats.totalUsers;
+        document.getElementById('ov-active').textContent = stats.activeUsers;
+        document.getElementById('ov-tools').textContent = stats.totalToolUses;
+
+        const logHtml = stats.recentLogs.map(l => `
+          <div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
+            <div class="w-2 h-2 rounded-full bg-red-400/50 shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <span class="text-white text-sm">${l.name || 'System'}</span>
+              <span class="text-gray-500 text-sm"> - ${l.action.replace(/_/g, ' ')}</span>
+            </div>
+            <span class="text-gray-600 text-xs shrink-0">${new Date(l.created_at).toLocaleTimeString()}</span>
+          </div>
+        `).join('');
+        document.getElementById('ov-logs').innerHTML = logHtml || '<p class="text-gray-500 text-sm">No logs yet</p>';
+      } catch {
+        window.location.href = '/login';
+      }
+    }
+
+    async function loadUsers() {
+      const search = document.getElementById('userSearch')?.value || '';
+      const res = await fetch(`/api/admin/users?page=${currentPage}&limit=10&search=${search}`);
+      const { users, total, totalPages } = await res.json();
+
+      document.getElementById('userPagination').textContent = `Page ${currentPage} of ${totalPages} (${total} users)`;
+      document.getElementById('usersTable').innerHTML = users.map(u => `
+        <tr>
+          <td class="px-5 py-4">
+            <div>
+              <p class="text-white text-sm font-medium">${u.name}</p>
+              <p class="text-gray-500 text-xs">${u.email}</p>
+            </div>
+          </td>
+          <td class="px-5 py-4">
+            <span class="badge-${u.role} text-xs px-2.5 py-1 rounded-lg font-medium">${u.role}</span>
+          </td>
+          <td class="px-5 py-4">
+            <span class="badge-${u.status} text-xs px-2.5 py-1 rounded-lg font-medium">${u.status}</span>
+          </td>
+          <td class="px-5 py-4 text-gray-500 text-xs">
+            ${u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}
+          </td>
+          <td class="px-5 py-4">
+            <div class="flex items-center gap-2">
+              <button onclick="toggleUserStatus('${u.id}','${u.status === 'active' ? 'inactive' : 'active'}')"
+                class="text-xs px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors">
+                ${u.status === 'active' ? 'Deactivate' : 'Activate'}
+              </button>
+              <button onclick="deleteUser('${u.id}','${u.name}')"
+                class="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadAdminTools() {
+      const { tools } = await (await fetch('/api/admin/tools')).json();
+      document.getElementById('adminToolsGrid').innerHTML = tools.map(t => `
+        <div class="card rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-white font-medium">${t.name}</h3>
+            <span class="text-xs px-2.5 py-1 rounded-lg ${t.status === 'active' ? 'bg-green-500/15 text-green-400' : 'bg-gray-500/15 text-gray-400'}">
+              ${t.status}
+            </span>
+          </div>
+          <p class="text-gray-500 text-sm mb-4">${t.description}</p>
+          <button onclick="toggleTool('${t.id}','${t.status === 'active' ? 'inactive' : 'active'}')"
+            class="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors">
+            ${t.status === 'active' ? 'Disable' : 'Enable'}
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function loadLogs() {
+      const { logs } = await (await fetch('/api/admin/logs')).json();
+      document.getElementById('logsTable').innerHTML = logs.map(l => `
+        <tr>
+          <td class="px-5 py-3.5 text-sm">
+            <p class="text-white">${l.name || 'System'}</p>
+            <p class="text-gray-500 text-xs">${l.email || '-'}</p>
+          </td>
+          <td class="px-5 py-3.5 text-gray-300 text-sm">${l.action.replace(/_/g, ' ')}</td>
+          <td class="px-5 py-3.5 text-gray-500 text-xs">${l.ip_address || '-'}</td>
+          <td class="px-5 py-3.5 text-gray-500 text-xs">${new Date(l.created_at).toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function toggleUserStatus(id, newStatus) {
+      await fetch(`/api/admin/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      loadUsers();
+    }
+
+    async function deleteUser(id, name) {
+      if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+      await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      loadUsers();
+    }
+
+    async function toggleTool(id, newStatus) {
+      await fetch(`/api/admin/tools/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      loadAdminTools();
+    }
+
+    function changePage(dir) {
+      currentPage = Math.max(1, currentPage + dir);
+      loadUsers();
+    }
+
+    let searchTimer;
+    function searchUsers() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { currentPage = 1; loadUsers(); }, 300);
+    }
+
+    function showAddUserModal() {
+      document.getElementById('addUserModal').classList.remove('hidden');
+    }
+    function closeModal() {
+      document.getElementById('addUserModal').classList.add('hidden');
+      document.getElementById('addUserForm').reset();
+      document.getElementById('modalError').classList.add('hidden');
+    }
+
+    async function addUser(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const errEl = document.getElementById('modalError');
+      errEl.classList.add('hidden');
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.fromEntries(fd)),
+        });
+        const data = await res.json();
+        if (data.success) { closeModal(); loadUsers(); }
+        else { errEl.textContent = data.error; errEl.classList.remove('hidden'); }
+      } catch { errEl.textContent = 'Server error'; errEl.classList.remove('hidden'); }
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    }
+
+    init();
+  </script>
+</body>
+</html>
