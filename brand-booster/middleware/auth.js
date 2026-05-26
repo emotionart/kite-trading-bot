@@ -13,17 +13,17 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query(
-      'SELECT id, name, email, role, status, avatar FROM users WHERE id = $1 AND status = $2',
+    const [users] = await pool.query(
+      'SELECT id, name, email, role, status, avatar FROM users WHERE id = ? AND status = ?',
       [decoded.userId, 'active']
     );
 
-    if (!result.rows[0]) {
+    if (!users[0]) {
       res.clearCookie('token');
       return res.redirect('/login');
     }
 
-    req.user = result.rows[0];
+    req.user = users[0];
     next();
   } catch {
     res.clearCookie('token');
@@ -47,7 +47,7 @@ const requireAdmin = (req, res, next) => {
 const logActivity = (action) => async (req, res, next) => {
   if (req.user) {
     pool.query(
-      'INSERT INTO activity_logs (user_id, action, ip_address) VALUES ($1, $2, $3)',
+      'INSERT INTO activity_logs (id, user_id, action, ip_address) VALUES (UUID(), ?, ?, ?)',
       [req.user.id, action, req.ip]
     ).catch(() => {});
   }
