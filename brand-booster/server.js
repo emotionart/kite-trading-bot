@@ -80,6 +80,31 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
 });
 
+// Temporary debug endpoint
+app.get('/debug-bb-2024', async (req, res) => {
+  const pool = require('./config/db');
+  const info = {
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      DB_HOST: process.env.DB_HOST,
+      DB_NAME: process.env.DB_NAME,
+      DB_USER: process.env.DB_USER,
+      DB_PASSWORD: process.env.DB_PASSWORD ? '✓ set' : '✗ missing',
+      DB_PASS: process.env.DB_PASS ? '✓ set' : '✗ missing',
+      JWT_SECRET: process.env.JWT_SECRET ? '✓ set' : '✗ missing',
+      PORT: process.env.PORT,
+    },
+    db: 'testing...',
+  };
+  try {
+    const [rows] = await pool.query('SELECT COUNT(*) as users FROM users');
+    info.db = `✓ Connected — ${rows[0].users} user(s) in DB`;
+  } catch (e) {
+    info.db = `✗ DB Error: ${e.message}`;
+  }
+  res.json(info);
+});
+
 // Temporary DB setup endpoint - auto-removes after first run
 app.get('/setup-bb-init-2024', async (req, res) => {
   const pool = require('./config/db');
