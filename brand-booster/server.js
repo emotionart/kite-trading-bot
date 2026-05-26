@@ -80,6 +80,55 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
 });
 
+// Temporary DB setup endpoint - auto-removes after first run
+app.get('/setup-bb-init-2024', async (req, res) => {
+  const pool = require('./config/db');
+  const bcrypt = require('bcryptjs');
+  const log = [];
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS users (id CHAR(36) NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role VARCHAR(50) DEFAULT 'user', status VARCHAR(50) DEFAULT 'active', avatar VARCHAR(500), last_login DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`);
+    log.push('✓ users table');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS sessions (id CHAR(36) NOT NULL PRIMARY KEY, user_id CHAR(36), token VARCHAR(500) NOT NULL, ip_address VARCHAR(50), user_agent TEXT, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`);
+    log.push('✓ sessions table');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS activity_logs (id CHAR(36) NOT NULL PRIMARY KEY, user_id CHAR(36), action VARCHAR(255) NOT NULL, details TEXT, ip_address VARCHAR(50), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL)`);
+    log.push('✓ activity_logs table');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS ai_tools (id CHAR(36) NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE, description TEXT, icon VARCHAR(100), category VARCHAR(100), status VARCHAR(50) DEFAULT 'active', sort_order INT DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    log.push('✓ ai_tools table');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS tool_usage (id CHAR(36) NOT NULL PRIMARY KEY, user_id CHAR(36), tool_id CHAR(36), tokens_used INT DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (tool_id) REFERENCES ai_tools(id) ON DELETE CASCADE)`);
+    log.push('✓ tool_usage table');
+
+    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', ['admin@thebrandbooster.biz']);
+    if (existing.length === 0) {
+      const hashed = await bcrypt.hash('Admin@BrandBooster2024!', 12);
+      await pool.query(`INSERT INTO users (id, name, email, password, role) VALUES (UUID(), 'Super Admin', 'admin@thebrandbooster.biz', ?, 'admin')`, [hashed]);
+      log.push('✓ Admin user created');
+    } else {
+      log.push('✓ Admin user already exists');
+    }
+
+    const tools = [
+      ['AI Chat','Intelligent AI conversation assistant','chat','Communication',1],
+      ['Content Writer','Generate blogs, captions, and marketing copy','edit','Content',2],
+      ['Brand Analyzer','Analyze and improve your brand identity','analytics','Analytics',3],
+      ['Social Media AI','Auto-generate social media posts','share','Social',4],
+      ['SEO Optimizer','Optimize content for search engines','search','Marketing',5],
+      ['Email Campaign','Create AI-powered email campaigns','mail','Marketing',6],
+    ];
+    for (const [name, desc, icon, cat, order] of tools) {
+      await pool.query(`INSERT IGNORE INTO ai_tools (id, name, description, icon, category, sort_order) VALUES (UUID(), ?, ?, ?, ?, ?)`, [name, desc, icon, cat, order]);
+    }
+    log.push('✓ 6 AI tools seeded');
+
+    res.json({ success: true, message: 'Database setup complete!', steps: log, login: { email: 'admin@thebrandbooster.biz', password: 'Admin@BrandBooster2024!' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, steps: log });
+  }
+});
+
 // 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
