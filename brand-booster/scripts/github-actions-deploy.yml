@@ -1,0 +1,100 @@
+name: Deploy to Hostinger
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/adoring-cannon-5rpCO]
+    paths:
+      - 'brand-booster/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 145.79.209.165
+          port: 65002
+          username: u102761338
+          password: ${{ secrets.SSH_PASSWORD }}
+          command_timeout: 10m
+          script: |
+            set -e
+            echo "=== Brand Booster Deploy Started ==="
+
+            DEPLOY_DIR="$HOME/domains/agent.thebrandbooster.biz/public_html"
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            # Clone or update
+            if [ -d ".git" ]; then
+              echo "Updating existing repo..."
+              git pull origin claude/adoring-cannon-5rpCO
+            else
+              echo "Fresh clone..."
+              TMP=$(mktemp -d)
+              git clone --depth=1 -b claude/adoring-cannon-5rpCO \
+                https://github.com/emotionart/kite-trading-bot.git "$TMP"
+              cp -r "$TMP/brand-booster/." .
+              rm -rf "$TMP"
+            fi
+
+            # Create .env
+            cat > .env << 'ENVEOF'
+            PORT=3000
+            NODE_ENV=production
+            APP_URL=https://agent.thebrandbooster.biz
+            DB_HOST=localhost
+            DB_PORT=3306
+            DB_NAME=u102761338_agent
+            DB_USER=u102761338_agent
+            DB_PASSWORD=BrandBooster@2024
+            JWT_SECRET=BbAI2024SecureKey_xK9mP3qR7vN1wL5zA8jE2tY6uH4cF0sBdGiOe
+            JWT_EXPIRES_IN=7d
+            SESSION_SECRET=BbSession2024_mX3kP9vQ2nR8wL
+            ADMIN_EMAIL=admin@thebrandbooster.biz
+            ADMIN_PASSWORD=Admin@BrandBooster2024!
+            ADMIN_NAME=Super Admin
+            ENVEOF
+            sed -i 's/^            //' .env
+
+            # Node.js - find correct path
+            export PATH="$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ 2>/dev/null | sort -V | tail -1)/bin:/opt/cpanel/ea-nodejs20/bin:/opt/alt/node20/bin:/usr/local/bin:$PATH"
+            NODE=$(which node || echo "")
+            NPM=$(which npm || echo "")
+
+            if [ -z "$NODE" ]; then
+              echo "Node.js not found in PATH. Checking alt paths..."
+              for p in /opt/cpanel/ea-nodejs*/bin/node /opt/alt/node*/bin/node; do
+                [ -f "$p" ] && NODE="$p" && NPM="${p%node}npm" && break
+              done
+            fi
+
+            echo "Node: $($NODE --version 2>/dev/null)"
+            echo "NPM: $($NPM --version 2>/dev/null)"
+
+            # Install dependencies
+            echo "Running npm install..."
+            $NPM install --production --no-audit --no-fund
+
+            # Setup database
+            echo "Setting up database..."
+            $NODE scripts/setup-db.js
+
+            # PM2
+            PM2=$(which pm2 2>/dev/null || echo "")
+            if [ -n "$PM2" ]; then
+              $PM2 delete brand-booster 2>/dev/null || true
+              $PM2 start server.js --name brand-booster --interpreter "$NODE"
+              $PM2 save
+              echo "PM2 started"
+            else
+              echo "PM2 not available - use hPanel Node.js Manager to start"
+            fi
+
+            echo ""
+            echo "=== DEPLOY COMPLETE ==="
+            echo "URL: https://agent.thebrandbooster.biz"
+            echo "Admin: admin@thebrandbooster.biz"
+            echo "Pass: Admin@BrandBooster2024!"
